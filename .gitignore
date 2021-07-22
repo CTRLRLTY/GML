@@ -1,4 +1,5 @@
 .cache/
 .sconsign.dblite
+compile_commands.json
 main
 *.o
