@@ -10,7 +10,8 @@ namespace GML {
   enum COND {EQ, NEQ, LT, LTE, GT, GTE};
   enum MODE {BINARY, RANKED, MULTIPLE};
 
-  class TDATA : public std::vector<std::string> {
+  template<typename T>
+  class TDATA : public std::vector<T> {
     public:
       std::string label;
 
@@ -29,8 +30,9 @@ namespace GML {
       }
   };
 
-  struct TDATA_COL : public std::vector<TDATA> {
-    using vector<TDATA>::vector;
+  template<typename T>
+  struct TDATA_COL : public std::vector<TDATA<T>> {
+    using std::vector<TDATA<T>>::vector;
 
     auto col_size() const {
       return (*this)[0].size();
@@ -68,7 +70,7 @@ namespace GML {
         QUESTION() : _column{0}, _value{0} {}
         QUESTION(int column, T value) : _column{column}, _value{value} {}
 
-        bool operator()(const TDATA& td, enum COND M = EQ) const {
+        bool operator()(const TDATA<T>& td, enum COND M = EQ) const {
           T val = td[_column];
           switch(M) {
             case EQ:
@@ -92,7 +94,8 @@ namespace GML {
         }
     };
 
-  double gini(const TDATA_COL& r) {
+  template<typename T>
+  double gini(const TDATA_COL<T>& r) {
     auto counts = r.count();
     double impurity = 1.0;
     for(const auto& [_name, amount] : counts) {
@@ -104,8 +107,8 @@ namespace GML {
   }
 
   template<typename T>
-    std::pair<TDATA_COL, TDATA_COL> partition(const TDATA_COL& r, const QUESTION<T>& q) {
-      TDATA_COL true_rows, false_rows;
+    std::pair<TDATA_COL<T>, TDATA_COL<T>> partition(const TDATA_COL<T>& r, const QUESTION<T>& q) {
+      TDATA_COL<T> true_rows, false_rows;
       for(const auto& x : r) {
         if(q(x))
           true_rows.push_back(x);
@@ -115,7 +118,8 @@ namespace GML {
       return {true_rows, false_rows};
     }
 
-  double info_gain(const TDATA_COL& left, const TDATA_COL& right, double base_impurity) {
+  template<typename T>
+  double info_gain(const TDATA_COL<T>& left, const TDATA_COL<T>& right, double base_impurity) {
     int left_size = left.size();
     double item_ratio = ((double) left_size) / (left_size + right.size());
 
@@ -124,7 +128,7 @@ namespace GML {
 
   template<typename T, enum MODE = BINARY>
     std::pair<double, QUESTION<T>> 
-    find_best_split(const TDATA_COL& tdatacol) {
+    find_best_split(const TDATA_COL<T>& tdatacol) {
       double best_gain = 0.0,
              root_impurity = gini(tdatacol);
       int column_size = tdatacol.col_size();
@@ -163,9 +167,9 @@ namespace GML {
 using namespace std::literals::string_literals;
 
 int main() {
-  GML::TDATA data{"Apple", {"Red", "Big"}};
+  GML::TDATA<std::string> data{"Apple", {"Red", "Big"}};
 
-  GML::TDATA_COL training_data({
+  GML::TDATA_COL<std::string> training_data({
       {"Apple", {"Green", "Big"}},
       {"Apple", {"Yellow", "Big"}},
       {"Lemon", {"Yellow", "Big"}},
@@ -173,7 +177,7 @@ int main() {
       {"Grape", {"Red", "Small"}},
       });
 
-  GML::TDATA_COL no_mixing({
+  GML::TDATA_COL<std::string> no_mixing({
       {"Apple", {}},
       {"Orange", {}},
       {"Grape", {}},
