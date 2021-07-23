@@ -118,99 +118,49 @@ namespace GML {
         }
     };
 
-/*
-  // IMPURITY DOES NOT HAVE DEFAULT VALUES!
-  template<typename T>
-    class DECISION_NODE {
-      public:
-        std::shared_ptr<TDATA_COL<T>> tdatacol_sptr;
-        TDATA_COL<T> tdatacol;
-        double impurity;
-        QUESTION<T> question;
-        std::shared_ptr<DECISION_NODE> true_branch;
-        std::shared_ptr<DECISION_NODE> false_branch;
+  template<typename T> struct NODE_DATA;
 
-        DECISION_NODE() : impurity{0.0}, true_branch{nullptr}, false_branch{nullptr} {}
-        DECISION_NODE(TDATA_COL<T>& tdc, double gini, QUESTION<T> q, std::shared_ptr<DECISION_NODE> tbranch = nullptr, std::shared_ptr<DECISION_NODE> fbranch = nullptr) 
-          : tdatacol{tdc}, impurity{gini}, question{q}, true_branch{tbranch}, false_branch{fbranch} {}
-
-        bool is_leaf() const {
-          return (true_branch == nullptr) && (false_branch == nullptr);
-        }
-
-        friend std::ostream& operator<<(std::ostream& out, const DECISION_NODE& dnode) {
-          out << "DECISION_NODE(" 
-            << dnode.tdatacol
-            << ", "
-            << dnode.question 
-            << ", " 
-            << dnode.impurity 
-            << ", " ;
-
-          if(dnode.true_branch == nullptr)
-            out << "NULL";
-          else
-            out << *(dnode.true_branch);
-
-          out << ", ";
-
-          if(dnode.false_branch == nullptr)
-            out << "NULL";
-          else
-            out << *(dnode.false_branch);
-
-          out << ")";
-          return out;
-        }
-    };
-*/
-
-template<typename T> struct NODE_DATA;
-
-  // IMPURITY DOES NOT HAVE DEFAULT VALUES!
   template<typename T>
     class DECISION_NODE {
       private: 
-        std::shared_ptr<TDATA_COL<T>> tdatacol_sptr;
-        std::shared_ptr<DECISION_NODE> true_branch;
-        std::shared_ptr<DECISION_NODE> false_branch;
+        std::shared_ptr<NODE_DATA<T>> _nodedata_sptr;
+        std::shared_ptr<QUESTION<T>> _question_sptr;
+        std::shared_ptr<DECISION_NODE> _true_branch_sptr;
+        std::shared_ptr<DECISION_NODE> _false_branch_sptr;
 
       public:
-        double impurity;
-        QUESTION<T> question;
-        DECISION_NODE() : tdatacol_sptr{nullptr}, impurity{0.0}, true_branch{nullptr}, false_branch{nullptr} {}
         DECISION_NODE(
-            std::shared_ptr<TDATA_COL<T>> tdc, 
-            double gini, 
-            QUESTION<T> q, 
-            std::shared_ptr<DECISION_NODE> tbranch = nullptr,
-            std::shared_ptr<DECISION_NODE> fbranch = nullptr
-            ) : tdatacol_sptr{tdc}, impurity{gini}, question{q}, true_branch{tbranch}, false_branch{fbranch} {}
+            std::shared_ptr<NODE_DATA<T>> nodedata_sptr = nullptr,
+            std::shared_ptr<QUESTION<T>> question_sptr = nullptr,
+            std::shared_ptr<DECISION_NODE> true_branch_sptr = nullptr,
+            std::shared_ptr<DECISION_NODE> false_branch_sptr = nullptr
+            ) : _nodedata_sptr{nodedata_sptr}, _question_sptr{question_sptr}, _true_branch_sptr{true_branch_sptr}, _false_branch_sptr{false_branch_sptr} {}
 
-        bool is_leaf() const {
-          return (true_branch == nullptr) && (false_branch == nullptr);
-        }
+        NODE_DATA<T> nodedata() const { return *_nodedata_sptr; }
+        QUESTION<T> question() const { return *_question_sptr; }
+        DECISION_NODE true_branch() const { return *_true_branch_sptr; }
+        DECISION_NODE false_branch() const { return *_false_branch_sptr; }
+        bool is_leaf() const { return !_true_branch_sptr && !_false_branch_sptr; }
 
         friend std::ostream& operator<<(std::ostream& out, const DECISION_NODE& dnode) {
-          out << "DECISION_NODE(" 
-            << *dnode.tdatacol_sptr
-            << ", "
-            << dnode.question 
-            << ", " 
-            << dnode.impurity 
-            << ", " ;
-
-          if(dnode.true_branch == nullptr)
-            out << "NULL";
+          out << "DECISION_NODE(" << *dnode._nodedata_sptr << ", ";
+            
+          if(dnode._question_sptr == nullptr)
+            out << "nullptr";
           else
-            out << *(dnode.true_branch);
-
+            out << *dnode._question_sptr;
           out << ", ";
 
-          if(dnode.false_branch == nullptr)
-            out << "NULL";
+          if(dnode._true_branch_sptr == nullptr)
+            out << "nullptr";
           else
-            out << *(dnode.false_branch);
+            out << *dnode._true_branch_sptr;
+          out << ", ";
+
+          if(dnode._false_branch_sptr == nullptr)
+            out << "nullptr";
+          else
+            out << *dnode._false_branch_sptr;
 
           out << ")";
           return out;
@@ -224,14 +174,20 @@ template<typename T> struct NODE_DATA;
         const TDATA_COL<T>& _training_data;
         std::shared_ptr<DECISION_NODE<T>> _dtree;
         std::shared_ptr<DECISION_NODE<T>> _build_tree(TDATA_COL<T>& tdatacol);
+
         const DECISION_NODE<T>& _find_best_answer(const DATA<T>& data, const DECISION_NODE<T>& node) const {
           if(node.is_leaf()) 
             return node;
 
-          if(node.question(data))
-            return _find_best_answer(data, *node.true_branch);
+          std::cout << node.true_branch() << std::endl;
+          std::cout << node.false_branch() << std::endl;
+          /*
+          if(node.question()(data))
+            return _find_best_answer(data, node.true_branch());
           else
-            return _find_best_answer(data, *node.false_branch);
+            return _find_best_answer(data, node.false_branch());
+          */
+          return node;
         };
 
       public:
@@ -240,16 +196,6 @@ template<typename T> struct NODE_DATA;
         DECISION_NODE<T> predict(DATA<T> data) const {
           return _find_best_answer(data, *_dtree);
         }
-
-        /*
-        DECISION_NODE<T> true_branch() const {
-          return *_dtree->true_branch;
-        }
-
-        DECISION_NODE<T> false_branch() const {
-          return *_dtree->false_branch;
-        }
-        */
 
         friend std::ostream& operator<<(std::ostream& out, const TREE& tree) {
           out << tree._dtree;
@@ -272,6 +218,7 @@ template<typename T> struct NODE_DATA;
   template<typename T>
     std::pair<TDATA_COL<T>, TDATA_COL<T>> partition(const TDATA_COL<T>& r, const QUESTION<T>& q) {
       TDATA_COL<T> true_rows, false_rows;
+
       for(const auto& x : r) {
         if(q(x))
           true_rows.push_back(x);
@@ -290,8 +237,7 @@ template<typename T> struct NODE_DATA;
     };
 
   template<typename T, enum MODE = BINARY>
-    std::pair<double, QUESTION<T>> 
-    find_best_split(const TDATA_COL<T>& tdatacol) {
+    std::pair<double, QUESTION<T>> find_best_split(const TDATA_COL<T>& tdatacol) {
       double best_gain = 0.0,
              root_impurity = gini(tdatacol);
       int column_size = tdatacol.col_size();
@@ -323,15 +269,21 @@ template<typename T> struct NODE_DATA;
     std::shared_ptr<DECISION_NODE<T>> TREE<T>::_build_tree(TDATA_COL<T>& tdatacol) {
       auto [info_gain, question] = find_best_split(tdatacol);
 
-      if(info_gain == 0) 
-        return std::make_shared<DECISION_NODE<T>>(tdatacol, info_gain, question, nullptr, nullptr);
+      NODE_DATA<T> nodedata( 
+          info_gain, 
+          std::make_shared<TDATA_COL<T>>(tdatacol));
 
-      auto [true_rows, false_rows] = partition(tdatacol, question);
+      if(info_gain == 0) 
+        return std::make_shared<DECISION_NODE<T>>(std::make_shared<NODE_DATA<T>>(std::move(nodedata)));
+
+      auto [true_rows, false_rows] = partition<T>(tdatacol, question);
 
       std::shared_ptr<DECISION_NODE<T>> true_branch = _build_tree(true_rows);
       std::shared_ptr<DECISION_NODE<T>> false_branch = _build_tree(false_rows);
-
-      return std::make_shared<DECISION_NODE<T>>(tdatacol, info_gain, question, true_branch, false_branch);
+      
+      return std::make_shared<DECISION_NODE<T>>(
+          std::make_shared<NODE_DATA<T>>(std::move(nodedata)), 
+          std::make_shared<QUESTION<T>>(question), true_branch, false_branch);
     }
 
   template<typename T>
@@ -340,14 +292,13 @@ template<typename T> struct NODE_DATA;
     }
 
   template<typename T> struct NODE_DATA {
+    double impurity;
     std::shared_ptr<TDATA_COL<T>> tdatacol_sptr;
     std::shared_ptr<CLASS_COUNT> count_sptr;
     std::shared_ptr<PRES_CONFIDENCE> confidence_sptr;
-    double impurity;
 
-    NODE_DATA() : impurity{0.0}, tdatacol_sptr{nullptr}, count_sptr{nullptr}, confidence_sptr{nullptr} {}
     NODE_DATA(
-        double gini,
+        double gini = 0.0,
         std::shared_ptr<TDATA_COL<T>> tdc_sptr = nullptr,
         std::shared_ptr<CLASS_COUNT> cnt_sptr = nullptr,
         std::shared_ptr<PRES_CONFIDENCE> cnf_sptr = nullptr
@@ -391,7 +342,7 @@ template<typename T> struct NODE_DATA;
 
     friend std::ostream& operator<<(std::ostream& out, const NODE_DATA& nodedata) {
       out << "NODE_DATA(" << nodedata.impurity << ", ";
-      
+
       if(nodedata.tdatacol_sptr)
         out << *nodedata.tdatacol_sptr;
       else
@@ -420,7 +371,7 @@ template<typename T> struct NODE_DATA;
 using namespace std::literals::string_literals;
 
 int main() {
-  GML::DATA<std::string> data{{"Yellow"s, "Big"s}};
+  GML::DATA<std::string> data{{"Red"s, "Big"s}};
 
   GML::TDATA_COL<std::string> training_data({
       {"Apple"s, {"Green"s, "Big"s}},
@@ -438,12 +389,10 @@ int main() {
       {"Blueberry", {}},
       });
 
-  GML::NODE_DATA<std::string> nodedata{GML::gini(training_data), std::make_shared<GML::TDATA_COL<std::string>>(training_data)};
-  GML::NODE_DATA<std::string> nodedata2;
-  nodedata2 = std::move(nodedata);
-  std::cout << nodedata << std::endl;
-  std::cout << nodedata2.tdatacol_sptr.use_count() << std::endl;
-  std::cout << nodedata.tdatacol_sptr.use_count() << std::endl;
-  
+  auto [bg, bq] = GML::find_best_split(training_data);
+
+
+  GML::TREE<std::string> tree(training_data);
+  tree.predict(data);
   return 0;
 }
