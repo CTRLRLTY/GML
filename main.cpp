@@ -4,6 +4,8 @@
 #include <vector>
 #include <variant>
 #include <unordered_map>
+#include <memory>
+#include <list>
 #include <cmath>
 
 namespace GML {
@@ -11,54 +13,74 @@ namespace GML {
   enum MODE {BINARY, RANKED, MULTIPLE};
 
   template<typename T>
-  class TDATA : public std::vector<T> {
-    public:
-      std::string label;
+    class DATA : public std::vector<T> {
+      public:
+        DATA(std::vector<T>& r) : std::vector<T>::vector(r) {}
+        DATA(std::vector<T>&& r) : std::vector<T>::vector(r) {}
 
-      TDATA(std::string data_label, std::vector<std::string>& r) : label{data_label}, std::vector<std::string>::vector(r) {}
-      TDATA(std::string data_label, std::vector<std::string>&& r) : label{data_label}, std::vector<std::string>::vector(r) {}
+        friend std::ostream& operator<<(std::ostream& out, const DATA& td) {
+          out << "DATA({"; 
 
-      friend std::ostream& operator<<(std::ostream& out, const TDATA& td) {
-        out << "TDATA(" << td.label << ", {"; 
+          for(size_t i = 0; i < td.size() - 1; ++i) {
+            out << td[i] << ", ";
+          }
 
-        for(size_t i = 0; i < td.size() - 1; ++i) {
-          out << td[i] << ", ";
+          out << td.back() << "})";
+          return out ;
         }
 
-        out << td.back() << "})";
-        return out ;
-      }
-  };
+    };
 
   template<typename T>
-  struct TDATA_COL : public std::vector<TDATA<T>> {
-    using std::vector<TDATA<T>>::vector;
+    class TDATA : public DATA<T> {
+      public:
+        std::string label;
 
-    auto col_size() const {
-      return (*this)[0].size();
-    }
+        TDATA(std::string data_label, std::vector<T>& r) : label{data_label}, DATA<T>(r) {}
+        TDATA(std::string data_label, std::vector<T>&& r) : label{data_label}, DATA<T>(r) {}
 
-    std::unordered_map<std::string, size_t> count() const {
-      std::unordered_map<std::string, size_t> data_counts{0};
-      for(const auto tdata : *this) {
-        const std::string& name = tdata.label;
-        data_counts[name] += 1;
+        friend std::ostream& operator<<(std::ostream& out, const TDATA& td) {
+          out << "TDATA(" << td.label << ", {"; 
+
+          for(size_t i = 0; i < td.size() - 1; ++i) {
+            out << td[i] << ", ";
+          }
+
+          out << td.back() << "})";
+          return out ;
+        }
+    };
+
+  template<typename T>
+    struct TDATA_COL : public std::vector<TDATA<T>> {
+      using std::vector<TDATA<T>>::vector;
+
+      auto col_size() const {
+        return (*this)[0].size();
       }
 
-      return data_counts;
-    }
+      std::unordered_map<std::string, size_t> count() const {
+        std::unordered_map<std::string, size_t> data_counts{0};
+        for(const auto tdata : *this) {
+          const std::string& name = tdata.label;
+          data_counts[name] += 1;
+        }
 
-    friend std::ostream& operator<<(std::ostream& out, const TDATA_COL& tdcol) {
-      out << "TDATA_COL(";
-      size_t tdcol_size = tdcol.size();
-
-      for(size_t i = 0; i < tdcol_size - 1; ++i) {
-        out << tdcol[i] << ", ";
+        return data_counts;
       }
-      out << tdcol.back() << ")";
-      return out;
-    }
-  };
+
+      friend std::ostream& operator<<(std::ostream& out, const TDATA_COL& tdcol) {
+        out << "TDATA_COL(";
+        size_t tdcol_size = tdcol.size();
+
+        for(size_t i = 0; i < tdcol_size - 1; ++i) {
+          out << tdcol[i] << ", ";
+        }
+        out << tdcol.back() << ")";
+        return out;
+      }
+
+    };
 
   template<typename T>
     class QUESTION {
@@ -70,7 +92,7 @@ namespace GML {
         QUESTION() : _column{0}, _value{0} {}
         QUESTION(int column, T value) : _column{column}, _value{value} {}
 
-        bool operator()(const TDATA<T>& td, enum COND M = EQ) const {
+        bool operator()(const DATA<T>& td, enum COND M = EQ) const {
           T val = td[_column];
           switch(M) {
             case EQ:
@@ -94,17 +116,99 @@ namespace GML {
         }
     };
 
+  // IMPURITY DOES NOT HAVE DEFAULT VALUES!
   template<typename T>
-  double gini(const TDATA_COL<T>& r) {
-    auto counts = r.count();
-    double impurity = 1.0;
-    for(const auto& [_name, amount] : counts) {
-      double correct_label_probability = amount / ((double) r.size()); 
-      impurity -= pow(correct_label_probability, 2.0);
-    }
+    class DECISION_NODE {
+      public:
+        TDATA_COL<T> tdatacol;
+        double impurity;
+        QUESTION<T> question;
 
-    return impurity;
-  }
+        DECISION_NODE* true_branch;
+        DECISION_NODE* false_branch;
+
+        DECISION_NODE() : impurity{0.0}, true_branch{nullptr}, false_branch{nullptr} {}
+        DECISION_NODE(TDATA_COL<T>& tdc, double gini, QUESTION<T> q, DECISION_NODE* tbranch = nullptr, DECISION_NODE* fbranch = nullptr) 
+          : tdatacol{tdc}, impurity{gini}, question{q}, true_branch{tbranch}, false_branch{fbranch} {}
+
+        bool is_leaf() const {
+          return (true_branch == nullptr) && (false_branch == nullptr);
+        }
+
+        friend std::ostream& operator<<(std::ostream& out, const DECISION_NODE& dnode) {
+          out << "DECISION_NODE(" 
+            << dnode.tdatacol
+            << ", "
+            << dnode.question 
+            << ", " 
+            << dnode.impurity 
+            << ", " ;
+
+          if(dnode.true_branch == nullptr)
+            out << "NULL";
+          else
+            out << *(dnode.true_branch);
+
+          out << ", ";
+
+          if(dnode.false_branch == nullptr)
+            out << "NULL";
+          else
+            out << *(dnode.false_branch);
+
+          out << ")";
+          return out;
+        }
+    };
+
+  template<typename T>
+    class TREE {
+      private:
+        const TDATA_COL<T>& _training_data;
+        DECISION_NODE<T>* _dtree;
+        DECISION_NODE<T>* _build_tree(TDATA_COL<T>& tdatacol);
+        DECISION_NODE<T> _find_best_answer(const DATA<T>& data,const DECISION_NODE<T>* node) const {
+          if(node->is_leaf()) 
+            return *node;
+
+          if(node->question(data))
+            return _find_best_answer(data, node->true_branch);
+          else
+            return _find_best_answer(data, node->false_branch);
+        };
+
+      public:
+        TREE(TDATA_COL<T>& training_data);
+
+        const DECISION_NODE<T> predict(DATA<T> data) const {
+          return _find_best_answer(data, _dtree);
+        }
+
+        const std::list<DECISION_NODE<T>>& true_branch() const {
+          return _dtree->true_branch;
+        }
+
+        const std::list<DECISION_NODE<T>>& false_branch() const {
+          return _dtree->false_branch;
+        }
+
+        friend std::ostream& operator<<(std::ostream& out, const TREE& tree) {
+          out << tree._dtree;
+          return out;
+        }
+    };
+
+  template<typename T>
+    double gini(const TDATA_COL<T>& r) {
+      auto counts = r.count();
+      double impurity = 1.0;
+      for(const auto& [_name, amount] : counts) {
+        double correct_label_probability = amount / ((double) r.size()); 
+        impurity -= pow(correct_label_probability, 2.0);
+      }
+
+      return impurity;
+    }
 
   template<typename T>
     std::pair<TDATA_COL<T>, TDATA_COL<T>> partition(const TDATA_COL<T>& r, const QUESTION<T>& q) {
@@ -119,12 +223,12 @@ namespace GML {
     }
 
   template<typename T>
-  double info_gain(const TDATA_COL<T>& left, const TDATA_COL<T>& right, double base_impurity) {
-    int left_size = left.size();
-    double item_ratio = ((double) left_size) / (left_size + right.size());
+    double info_gain(const TDATA_COL<T>& left, const TDATA_COL<T>& right, double base_impurity) {
+      int left_size = left.size();
+      double item_ratio = ((double) left_size) / (left_size + right.size());
 
-    return base_impurity - item_ratio * gini(left) - (1 - item_ratio) * gini(right);
-  };
+      return base_impurity - item_ratio * gini(left) - (1 - item_ratio) * gini(right);
+    };
 
   template<typename T, enum MODE = BINARY>
     std::pair<double, QUESTION<T>> 
@@ -143,7 +247,7 @@ namespace GML {
 
           if(true_rows.size() == 0 || false_rows.size() == 0)
             continue;
-          
+
           gain = info_gain(true_rows, false_rows, root_impurity);
 
           if(best_gain <= gain) {
@@ -157,24 +261,38 @@ namespace GML {
     }
 
   template<typename T> 
-    void print_vector(const std::vector<T>& v) {
-      for(const auto& content : v) {
-        std::cout << content << std::endl;
-      }
+    DECISION_NODE<T>* TREE<T>::_build_tree(TDATA_COL<T>& tdatacol) {
+      auto [gain, question] = find_best_split(tdatacol);
+
+      std::cout << gain << " " << question << std::endl;
+      if(gain == 0) 
+        return new DECISION_NODE<T>(tdatacol, gain, question, nullptr, nullptr);
+
+      auto [true_rows, false_rows] = partition(tdatacol, question);
+
+      auto true_branch = _build_tree(true_rows);
+      auto false_branch = _build_tree(false_rows);
+
+      return new DECISION_NODE<T>{tdatacol, gain, question, true_branch, false_branch};
+    }
+
+  template<typename T>
+    TREE<T>::TREE(TDATA_COL<T>& training_data) : _training_data{training_data} {
+      this->_dtree = this->_build_tree(training_data);
     }
 }
 
 using namespace std::literals::string_literals;
 
 int main() {
-  GML::TDATA<std::string> data{"Apple", {"Red", "Big"}};
+  GML::DATA<std::string> data{{"Yellow"s, "Big"s}};
 
   GML::TDATA_COL<std::string> training_data({
-      {"Apple", {"Green", "Big"}},
-      {"Apple", {"Yellow", "Big"}},
-      {"Lemon", {"Yellow", "Big"}},
-      {"Grape", {"Red", "Small"}},
-      {"Grape", {"Red", "Small"}},
+      {"Apple"s, {"Green"s, "Big"s}},
+      {"Apple"s, {"Yellow"s, "Big"s}},
+      {"Lemon"s, {"Yellow"s, "Big"s}},
+      {"Grape"s, {"Red"s, "Small"s}},
+      {"Grape"s, {"Red"s, "Small"s}},
       });
 
   GML::TDATA_COL<std::string> no_mixing({
@@ -186,7 +304,8 @@ int main() {
       });
 
   auto [bg, bq] = GML::find_best_split<std::string>(training_data);
-  std::cout << bg << " " << bq;
+  GML::TREE<std::string> tree{training_data};
+  std::cout << tree.predict(data);
 
   return 0;
 }
