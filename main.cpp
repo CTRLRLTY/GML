@@ -175,30 +175,25 @@ namespace GML {
         std::shared_ptr<DECISION_NODE<T>> _dtree;
         std::shared_ptr<DECISION_NODE<T>> _build_tree(TDATA_COL<T>& tdatacol);
 
-        const DECISION_NODE<T>& _find_best_answer(const DATA<T>& data, const DECISION_NODE<T>& node) const {
+        DECISION_NODE<T> _find_best_answer(const DATA<T>& data, const DECISION_NODE<T>& node) const {
           if(node.is_leaf()) 
             return node;
 
-          std::cout << node.true_branch() << std::endl;
-          std::cout << node.false_branch() << std::endl;
-          /*
-          if(node.question()(data))
+          if(node.question()(data)) 
             return _find_best_answer(data, node.true_branch());
-          else
+          else 
             return _find_best_answer(data, node.false_branch());
-          */
-          return node;
         };
 
       public:
         TREE(TDATA_COL<T>& training_data);
 
         DECISION_NODE<T> predict(DATA<T> data) const {
-          return _find_best_answer(data, *_dtree);
+         return _find_best_answer(data, *_dtree);
         }
 
         friend std::ostream& operator<<(std::ostream& out, const TREE& tree) {
-          out << tree._dtree;
+          out << *tree._dtree;
           return out;
         }
     };
@@ -254,7 +249,6 @@ namespace GML {
             continue;
 
           gain = info_gain(true_rows, false_rows, root_impurity);
-
           if(best_gain <= gain) {
             best_gain = gain;
             best_question = q;
@@ -271,7 +265,9 @@ namespace GML {
 
       NODE_DATA<T> nodedata( 
           info_gain, 
-          std::make_shared<TDATA_COL<T>>(tdatacol));
+          std::make_shared<TDATA_COL<T>>(tdatacol),
+          std::make_shared<CLASS_COUNT>(tdatacol.count())
+          );
 
       if(info_gain == 0) 
         return std::make_shared<DECISION_NODE<T>>(std::make_shared<NODE_DATA<T>>(std::move(nodedata)));
@@ -393,6 +389,6 @@ int main() {
 
 
   GML::TREE<std::string> tree(training_data);
-  tree.predict(data);
+  std::cout << tree.predict(data);
   return 0;
 }
