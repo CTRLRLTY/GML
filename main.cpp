@@ -123,12 +123,11 @@ namespace GML {
         TDATA_COL<T> tdatacol;
         double impurity;
         QUESTION<T> question;
-
-        DECISION_NODE* true_branch;
-        DECISION_NODE* false_branch;
+        std::shared_ptr<DECISION_NODE> true_branch;
+        std::shared_ptr<DECISION_NODE> false_branch;
 
         DECISION_NODE() : impurity{0.0}, true_branch{nullptr}, false_branch{nullptr} {}
-        DECISION_NODE(TDATA_COL<T>& tdc, double gini, QUESTION<T> q, DECISION_NODE* tbranch = nullptr, DECISION_NODE* fbranch = nullptr) 
+        DECISION_NODE(TDATA_COL<T>& tdc, double gini, QUESTION<T> q, std::shared_ptr<DECISION_NODE> tbranch = nullptr, std::shared_ptr<DECISION_NODE> fbranch = nullptr) 
           : tdatacol{tdc}, impurity{gini}, question{q}, true_branch{tbranch}, false_branch{fbranch} {}
 
         bool is_leaf() const {
@@ -165,9 +164,9 @@ namespace GML {
     class TREE {
       private:
         const TDATA_COL<T>& _training_data;
-        DECISION_NODE<T>* _dtree;
-        DECISION_NODE<T>* _build_tree(TDATA_COL<T>& tdatacol);
-        DECISION_NODE<T> _find_best_answer(const DATA<T>& data,const DECISION_NODE<T>* node) const {
+        std::shared_ptr<DECISION_NODE<T>> _dtree;
+        std::shared_ptr<DECISION_NODE<T>> _build_tree(TDATA_COL<T>& tdatacol);
+        DECISION_NODE<T> _find_best_answer(const DATA<T>& data,const std::shared_ptr<DECISION_NODE<T>> node) const {
           if(node->is_leaf()) 
             return *node;
 
@@ -184,11 +183,11 @@ namespace GML {
           return _find_best_answer(data, _dtree);
         }
 
-        const std::list<DECISION_NODE<T>>& true_branch() const {
+        const auto true_branch() const {
           return _dtree->true_branch;
         }
 
-        const std::list<DECISION_NODE<T>>& false_branch() const {
+        const auto false_branch() const {
           return _dtree->false_branch;
         }
 
@@ -261,19 +260,18 @@ namespace GML {
     }
 
   template<typename T> 
-    DECISION_NODE<T>* TREE<T>::_build_tree(TDATA_COL<T>& tdatacol) {
+    std::shared_ptr<DECISION_NODE<T>> TREE<T>::_build_tree(TDATA_COL<T>& tdatacol) {
       auto [gain, question] = find_best_split(tdatacol);
 
-      std::cout << gain << " " << question << std::endl;
       if(gain == 0) 
-        return new DECISION_NODE<T>(tdatacol, gain, question, nullptr, nullptr);
+        return std::make_shared<DECISION_NODE<T>>(tdatacol, gain, question, nullptr, nullptr);
 
       auto [true_rows, false_rows] = partition(tdatacol, question);
 
       auto true_branch = _build_tree(true_rows);
       auto false_branch = _build_tree(false_rows);
 
-      return new DECISION_NODE<T>{tdatacol, gain, question, true_branch, false_branch};
+      return std::make_shared<DECISION_NODE<T>>(tdatacol, gain, question, true_branch, false_branch);
     }
 
   template<typename T>
@@ -304,7 +302,7 @@ int main() {
       });
 
   auto [bg, bq] = GML::find_best_split<std::string>(training_data);
-  GML::TREE<std::string> tree{training_data};
+  GML::TREE<std::string> tree(training_data);
   std::cout << tree.predict(data);
 
   return 0;
