@@ -1,11 +1,8 @@
 #include <iostream>
-#include <iterator>
 #include <string>
 #include <vector>
-#include <variant>
 #include <unordered_map>
 #include <memory>
-#include <list>
 #include <cmath>
 
 namespace GML {
@@ -364,31 +361,3 @@ namespace GML {
   };
 }
 
-using namespace std::literals::string_literals;
-
-int main() {
-  GML::DATA<std::string> data{{"Red"s, "Big"s}};
-
-  GML::TDATA_COL<std::string> training_data({
-      {"Apple"s, {"Green"s, "Big"s}},
-      {"Apple"s, {"Yellow"s, "Big"s}},
-      {"Lemon"s, {"Yellow"s, "Big"s}},
-      {"Grape"s, {"Red"s, "Small"s}},
-      {"Grape"s, {"Red"s, "Small"s}},
-      });
-
-  GML::TDATA_COL<std::string> no_mixing({
-      {"Apple", {}},
-      {"Orange", {}},
-      {"Grape", {}},
-      {"Lemon", {}},
-      {"Blueberry", {}},
-      });
-
-  auto [bg, bq] = GML::find_best_split(training_data);
-
-
-  GML::TREE<std::string> tree(training_data);
-  std::cout << tree.predict(data);
-  return 0;
-}
