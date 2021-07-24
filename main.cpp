@@ -1,3 +1,5 @@
+#ifndef GML_CPP
+#define GML_CPP
 #include <iostream>
 #include <string>
 #include <vector>
@@ -360,4 +362,4 @@ namespace GML {
     }
   };
 }
-
+#endif
