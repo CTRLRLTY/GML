@@ -9,3 +9,4 @@ env.Tool('compilation_db')
 env.CompilationDatabase()
 
 env.SharedLibrary('bin/gml', 'src/main.cpp')
+env.StaticLibrary('bin/gml', 'src/main.cpp')
