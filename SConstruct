@@ -8,4 +8,4 @@ env = Environment(**options)
 env.Tool('compilation_db')
 env.CompilationDatabase()
 
-env.Program('main', 'main.cpp')
+env.SharedLibrary('bin/gml', 'src/main.cpp')
