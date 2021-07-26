@@ -100,14 +100,14 @@ template<typename T> struct NODE_DATA {
       std::shared_ptr<CLASS_COUNT> cnt_sptr = nullptr,
       std::shared_ptr<PRES_CONFIDENCE> cnf_sptr = nullptr
       );
-
   NODE_DATA(const NODE_DATA &nodedata);
-
   NODE_DATA(NODE_DATA &&nodedata);
-
   void operator=(const NODE_DATA& nodedata); 
-
   void operator=(NODE_DATA &&nodedata); 
+
+  bool empty() const {
+    return !tdatacol_sptr && !count_sptr && !confidence_sptr;
+  }
 
   friend std::ostream& operator<<(std::ostream& out, const NODE_DATA& nodedata) {
     out << "NODE_DATA(" << nodedata.impurity << ", ";
@@ -157,6 +157,9 @@ class DECISION_NODE {
     DECISION_NODE true_branch() const;
     DECISION_NODE false_branch() const;
     bool is_leaf() const;
+    bool empty() {
+      return (!_nodedata_sptr) && (!_question_sptr) && (!_true_branch_sptr) && (!_false_branch_sptr);
+    }
 
     friend std::ostream& operator<<(std::ostream& out, const DECISION_NODE& dnode) {
       out << "DECISION_NODE(" << *dnode._nodedata_sptr << ", ";
@@ -187,7 +190,7 @@ class DECISION_NODE {
 template<typename T>
 class TREE {
   private:
-    const TDATA_COL<T>& _training_data;
+    TDATA_COL<T> _training_data;
     std::shared_ptr<DECISION_NODE<T>> _dtree;
     std::shared_ptr<DECISION_NODE<T>> _build_tree(TDATA_COL<T>& tdatacol);
 
@@ -196,7 +199,18 @@ class TREE {
   public:
     TREE(TDATA_COL<T>& training_data);
 
+    TREE() : _dtree{nullptr} {}
     DECISION_NODE<T> predict(DATA<T> data) const;
+    bool empty() {
+      return _training_data.empty() && !_dtree;
+    }
+
+    DECISION_NODE<T> dump_tree() const {
+      if(_dtree) 
+        return *_dtree;
+      else
+        return DECISION_NODE<T>();
+    }
 
     friend std::ostream& operator<<(std::ostream& out, const TREE& tree) {
       out << *tree._dtree;
@@ -251,7 +265,7 @@ CLASS_COUNT TDATA_COL<T>::count() const {
 
 // QUESTION Definitions
 template<typename T>
-QUESTION<T>::QUESTION() : _column{0}, _value{0} {}
+QUESTION<T>::QUESTION() : _column{0}, _value{T()} {}
 template<typename T>
 QUESTION<T>::QUESTION(int column, T value) : _column{column}, _value{value} {}
 template<typename T>
