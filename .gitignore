@@ -6,3 +6,4 @@ main
 *.so
 *.os
 *.a
+bin/
