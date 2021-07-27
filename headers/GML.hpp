@@ -20,6 +20,7 @@ using PRES_CONFIDENCE = std::unordered_map<std::string, std::string>; // Predict
 template<typename T>
 class DATA : public std::vector<T> {
   public:
+    DATA() : std::vector<T>::vector() {}
     DATA(std::vector<T>& r);
     DATA(std::vector<T>&& r);
 
@@ -38,6 +39,7 @@ class TDATA : public DATA<T> {
   public:
     std::string label;
 
+    TDATA() : DATA<T>() {};
     TDATA(std::string data_label, std::vector<T>& r);
     TDATA(std::string data_label, std::vector<T>&& r);
 
@@ -192,8 +194,8 @@ class TREE {
   private:
     TDATA_COL<T> _training_data;
     std::shared_ptr<DECISION_NODE<T>> _dtree;
-    std::shared_ptr<DECISION_NODE<T>> _build_tree(TDATA_COL<T>& tdatacol);
 
+    std::shared_ptr<DECISION_NODE<T>> _build_tree(TDATA_COL<T>& tdatacol);
     DECISION_NODE<T> _find_best_answer(const DATA<T>& data, const DECISION_NODE<T>& node) const;
 
   public:
@@ -201,6 +203,7 @@ class TREE {
 
     TREE() : _dtree{nullptr} {}
     DECISION_NODE<T> predict(DATA<T> data) const;
+
     bool empty() {
       return _training_data.empty() && !_dtree;
     }
